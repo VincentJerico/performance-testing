@@ -1,0 +1,41 @@
+{
+  "name": "performance-testing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "k6 performance tests for TaskFlow: SLO-gated smoke and load tests in CI, plus stress, spike, soak, breakpoint and two root-cause experiments.",
+  "type": "module",
+  "scripts": {
+    "sut:start": "bash scripts/start-sut.sh",
+    "sut:stop": "bash scripts/stop-sut.sh",
+    "smoke": "bash scripts/run.sh scenarios/smoke.js",
+    "load": "bash scripts/run.sh scenarios/load.js",
+    "stress": "bash scripts/run.sh scenarios/stress.js",
+    "spike": "bash scripts/run.sh scenarios/spike.js",
+    "soak": "bash scripts/run.sh scenarios/soak.js",
+    "breakpoint": "bash scripts/run.sh scenarios/breakpoint.js",
+    "exp:auth": "k6 run experiments/auth-contention.js",
+    "exp:list": "k6 run experiments/list-growth.js",
+    "selftest": "bash selftest/gate-must-fail.sh",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "k6",
+    "performance-testing",
+    "load-testing",
+    "qa",
+    "slo"
+  ],
+  "author": "Vincent Jerico",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10"
+  }
+}

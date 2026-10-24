@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 18 * * *' # nightly deep run, 02:00 Philippine time
+  workflow_dispatch:
+    inputs:
+      deep:
+        description: 'Also run stress, spike, breakpoint, soak and the experiments'
+        type: boolean
+        default: false
+
+env:
+  # TaskFlow is checked out at a pinned commit, so a result changes only when this repo changes.
+  # To test a newer TaskFlow, bump this SHA in its own PR and compare the runs.
+  TASKFLOW_REF: 8b0d564ca225877e7d0b05d11f7305da975d9bc3
+  K6_VERSION: '2.3.0'
+
+jobs:
+  lint:
+    name: Lint + format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  gate:
+    name: Performance gate (smoke + load)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: VincentJerico/taskflow-under-test
+          ref: ${{ env.TASKFLOW_REF }}
+          path: sut
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+      - run: k6 inspect scenarios/smoke.js > /dev/null # fail fast on a script that doesn't compile
+      - name: Start TaskFlow
+        run: bash scripts/start-sut.sh
+        env:
+          SUT_DIR: sut
+      - name: Smoke test
+        run: bash scripts/run.sh scenarios/smoke.js
+      - name: Gate self-test (the gate must be able to fail)
+        run: bash selftest/gate-must-fail.sh
+      - name: Load test (SLO gate)
+        run: bash scripts/run.sh scenarios/load.js
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: node scripts/job-summary.mjs reports/*-summary.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: gate-reports
+          path: reports/
+          retention-days: 14
+
+  deep:
+    name: Deep run (${{ matrix.test }})
+    if: ${{ github.event_name == 'schedule' || inputs.deep }}
+    needs: gate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [stress, spike, breakpoint, soak, auth-contention, list-growth]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: VincentJerico/taskflow-under-test
+          ref: ${{ env.TASKFLOW_REF }}
+          path: sut
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: ${{ env.K6_VERSION }}
+      - name: Start TaskFlow
+        run: bash scripts/start-sut.sh
+        env:
+          SUT_DIR: sut
+      - name: Run ${{ matrix.test }}
+        run: |
+          case "${{ matrix.test }}" in
+            soak)
+              bash scripts/sample-rss.sh &
+              bash scripts/run.sh scenarios/soak.js -e DURATION=30m ;;
+            breakpoint)
+              # A breakpoint test is supposed to end by breaking the SLO (exit 99).
+              # Exit 0 means the runner never found the limit; both are results.
+              bash scripts/run.sh scenarios/breakpoint.js || [ $? -eq 99 ] ;;
+            auth-contention|list-growth)
+              k6 run --quiet "experiments/${{ matrix.test }}.js" ;;
+            *)
+              bash scripts/run.sh "scenarios/${{ matrix.test }}.js" ;;
+          esac
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: |
+          shopt -s nullglob
+          for f in reports/*-summary.json; do node scripts/job-summary.mjs "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          for f in reports/*.md; do cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          if [ -f reports/soak-rss.csv ]; then
+            { echo '### Server memory during soak (MB)'; echo '```'; cat reports/soak-rss.csv; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: ${{ matrix.test }}-reports
+          path: reports/
+          retention-days: 14
