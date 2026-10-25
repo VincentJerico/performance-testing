@@ -5,12 +5,12 @@ Performance findings for [TaskFlow](https://github.com/VincentJerico/taskflow-un
 [results/RESULTS-2026-10-24.md](results/RESULTS-2026-10-24.md), and every finding has a script
 that reproduces it.
 
-| ID       | Finding                                                                             | Severity | Status        |
-| -------- | ----------------------------------------------------------------------------------- | -------- | ------------- |
-| PERF-001 | Password hashing blocks the event loop, so login traffic stalls every other request | High     | Fix in review |
-| PERF-002 | `GET /api/tasks` has no pagination; the response grows with every task              | Low      | Open          |
-| OBS-001  | Task CRUD is not the bottleneck: over 7,000 req/s without breaking the SLO          | Info     | -             |
-| OBS-002  | Server memory during a short soak: inconclusive, needs the 30-minute run            | Info     | Open          |
+| ID       | Finding                                                                             | Severity | Status |
+| -------- | ----------------------------------------------------------------------------------- | -------- | ------ |
+| PERF-001 | Password hashing blocks the event loop, so login traffic stalls every other request | High     | Fixed  |
+| PERF-002 | `GET /api/tasks` has no pagination; the response grows with every task              | Low      | Open   |
+| OBS-001  | Task CRUD is not the bottleneck: over 7,000 req/s without breaking the SLO          | Info     | -      |
+| OBS-002  | Server memory during a short soak: inconclusive, needs the 30-minute run            | Info     | Open   |
 
 ---
 
@@ -65,8 +65,9 @@ against the same budget.
 
 ### Fix and re-test
 
-[taskflow-under-test#18](https://github.com/VincentJerico/taskflow-under-test/pull/18) switches to
-the async `crypto.scrypt` and adds a per-IP limit of 20 requests per minute on login and register.
+Fixed in [taskflow-under-test#18](https://github.com/VincentJerico/taskflow-under-test/pull/18)
+(merged as `e9012be`), which switches to the async `crypto.scrypt` and adds a per-IP limit of 20
+requests per minute on login and register.
 The experiment was re-run before and after the fix on the same machine (Apple M5 Pro), with the
 rate limit off so it measures the hashing change. Readers' p95 during logins:
 

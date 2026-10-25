@@ -17,7 +17,7 @@ on:
 env:
   # TaskFlow is checked out at a pinned commit, so a result changes only when this repo changes.
   # To test a newer TaskFlow, bump this SHA in its own PR and compare the runs.
-  TASKFLOW_REF: 8b0d564ca225877e7d0b05d11f7305da975d9bc3
+  TASKFLOW_REF: e9012be4e9d5aa965195c5a74316481751c75a3d
   K6_VERSION: '2.3.0'
 
 jobs:
