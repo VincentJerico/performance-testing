@@ -85,6 +85,10 @@ Pass condition met: at 30 logins/s, readers' p95 during logins (0.3 ms) is below
 These numbers come from a faster machine than the original Linux VM, which is why the old build's
 collapse at 60 logins/s is smaller here (768.7 ms rather than 12,181.9 ms).
 
+CI confirms it on Linux at 10 logins/s (the rate the deep job runs). On the same GitHub Actions
+runner image, readers' p95 during logins went from 43.9 ms before the fix to 0.9 ms after, against
+baselines of 2.2 ms and 0.7 ms.
+
 ---
 
 ## PERF-002: The task list has no pagination
