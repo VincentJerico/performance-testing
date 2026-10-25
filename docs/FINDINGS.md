@@ -5,12 +5,12 @@ Performance findings for [TaskFlow](https://github.com/VincentJerico/taskflow-un
 [results/RESULTS-2026-10-24.md](results/RESULTS-2026-10-24.md), and every finding has a script
 that reproduces it.
 
-| ID       | Finding                                                                             | Severity | Status |
-| -------- | ----------------------------------------------------------------------------------- | -------- | ------ |
-| PERF-001 | Password hashing blocks the event loop, so login traffic stalls every other request | High     | Open   |
-| PERF-002 | `GET /api/tasks` has no pagination; the response grows with every task              | Low      | Open   |
-| OBS-001  | Task CRUD is not the bottleneck: over 7,000 req/s without breaking the SLO          | Info     | -      |
-| OBS-002  | Server memory during a short soak: inconclusive, needs the 30-minute run            | Info     | Open   |
+| ID       | Finding                                                                             | Severity | Status        |
+| -------- | ----------------------------------------------------------------------------------- | -------- | ------------- |
+| PERF-001 | Password hashing blocks the event loop, so login traffic stalls every other request | High     | Fix in review |
+| PERF-002 | `GET /api/tasks` has no pagination; the response grows with every task              | Low      | Open          |
+| OBS-001  | Task CRUD is not the bottleneck: over 7,000 req/s without breaking the SLO          | Info     | -             |
+| OBS-002  | Server memory during a short soak: inconclusive, needs the 30-minute run            | Info     | Open          |
 
 ---
 
@@ -62,6 +62,27 @@ against the same budget.
 2. Rate-limit `/api/auth/login` and `/api/auth/register` per IP and per username.
 3. Re-run `experiments/auth-contention.js` after the fix. Pass condition: readers' p95 during
    logins stays within 2x the baseline at 30 logins/s.
+
+### Fix and re-test
+
+[taskflow-under-test#18](https://github.com/VincentJerico/taskflow-under-test/pull/18) switches to
+the async `crypto.scrypt` and adds a per-IP limit of 20 requests per minute on login and register.
+The experiment was re-run before and after the fix on the same machine (Apple M5 Pro), with the
+rate limit off so it measures the hashing change. Readers' p95 during logins:
+
+| Login rate  | Before (`scryptSync`) | After (async `scrypt`) | Baseline, after |
+| ----------- | --------------------: | ---------------------: | --------------: |
+| 10 logins/s |               27.7 ms |                 0.4 ms |          0.8 ms |
+| 30 logins/s |               20.7 ms |                 0.3 ms |          0.8 ms |
+| 60 logins/s |              768.7 ms |                 0.3 ms |          0.8 ms |
+
+Pass condition met: at 30 logins/s, readers' p95 during logins (0.3 ms) is below the baseline
+(0.8 ms), against 12.9x the baseline before the fix. Logins themselves still take about 20 to
+30 ms each, but they no longer hold up other requests. Full tables:
+[RESULTS-2026-10-25.md](results/RESULTS-2026-10-25.md).
+
+These numbers come from a faster machine than the original Linux VM, which is why the old build's
+collapse at 60 logins/s is smaller here (768.7 ms rather than 12,181.9 ms).
 
 ---
 
