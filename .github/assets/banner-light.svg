@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="t">
+  <title id="t">Performance Testing. k6 against TaskFlow. The build fails if any endpoint misses its budget. FOUND: PERF-001  60 logins/s pushed a 2 ms read to 12 s at p95. PASS: Task CRUD held over 7,000 requests/s with no errors. PASS: Smoke and load tests gate every push.</title>
+  <style>
+    /* Visible by default; 'backwards' hides each row only until its delayed fade-in starts, so a
+       viewer that doesn't run SVG animations still shows every line. */
+    .row { animation: in 0.4s ease-out backwards; }
+    .caret { animation: blink 1.1s steps(1) 2s infinite; }
+    @keyframes in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+    @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .row { animation: none; } .caret { animation: none; } }
+  </style>
+  <rect width="1200" height="450" rx="12" fill="#FAFAF7"/>
+  <rect x="0.5" y="0.5" width="1199" height="449" rx="12" fill="none" stroke="#E3E3DE"/>
+  <text x="56" y="60" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#555D66" letter-spacing="0.6">[07] of 07 · performance-testing</text>
+  <rect x="786" y="52" width="46" height="6" rx="2" fill="#E3E3DE"/><rect x="838" y="52" width="46" height="6" rx="2" fill="#E3E3DE"/><rect x="890" y="52" width="46" height="6" rx="2" fill="#E3E3DE"/><rect x="942" y="52" width="46" height="6" rx="2" fill="#E3E3DE"/><rect x="994" y="52" width="46" height="6" rx="2" fill="#E3E3DE"/><rect x="1046" y="52" width="46" height="6" rx="2" fill="#E3E3DE"/><rect x="1098" y="52" width="46" height="6" rx="2" fill="#0B5FD8"/>
+  <text x="56" y="138" font-family="'Instrument Serif', Georgia, 'Times New Roman', serif" font-size="60" fill="#111418">Performance Testing</text>
+  <text x="58" y="178" font-family="'IBM Plex Sans', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" fill="#555D66">k6 against TaskFlow. The build fails if any endpoint misses its budget</text>
+  <rect x="32" y="214" width="1136" height="208" rx="8" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <text x="56" y="254" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" fill="#0B5FD8">$ k6 run -e LOGIN_RATE=60 experiments/auth-contention.js</text>
+    <g class="row" style="animation-delay:0.5s">
+      <rect x="56" y="269" width="76" height="28" rx="4" fill="none" stroke="#CF222E" stroke-width="1.5"/>
+      <text x="94" y="290" text-anchor="middle" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#CF222E" letter-spacing="0.6">FOUND</text>
+      <text x="152" y="290" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" fill="#111418"><tspan font-weight="600" fill="#555D66">PERF-001</tspan>  60 logins/s pushed a 2 ms read to 12 s at p95</text>
+    </g>
+    <g class="row" style="animation-delay:0.85s">
+      <rect x="56" y="305" width="76" height="28" rx="4" fill="none" stroke="#1A7F37" stroke-width="1.5"/>
+      <text x="94" y="326" text-anchor="middle" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#1A7F37" letter-spacing="0.6">PASS</text>
+      <text x="152" y="326" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" fill="#111418">Task CRUD held over 7,000 requests/s with no errors</text>
+    </g>
+    <g class="row" style="animation-delay:1.2s">
+      <rect x="56" y="341" width="76" height="28" rx="4" fill="none" stroke="#1A7F37" stroke-width="1.5"/>
+      <text x="94" y="362" text-anchor="middle" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#1A7F37" letter-spacing="0.6">PASS</text>
+      <text x="152" y="362" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" fill="#111418">Smoke and load tests gate every push</text>
+    </g>
+  <text x="56" y="398" font-family="'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19" fill="#0B5FD8">$</text>
+  <rect class="caret" x="78" y="381" width="11" height="21" fill="#0B5FD8"/>
+</svg>
