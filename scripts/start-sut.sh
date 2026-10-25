@@ -4,12 +4,15 @@
 #   SUT_DIR    where taskflow-under-test is checked out   (default: ../taskflow-under-test)
 #   PORT       port to listen on                           (default: 3000)
 #   SUT_LOG    server log file                             (default: reports/taskflow.log)
+#   AUTH_RATE_LIMIT  TaskFlow's auth requests per client per minute (default: 0 = off). Every
+#              setup() signs in a pool of users from one IP, which a real limit would turn into 429s.
 #
 # The server keeps running after this script exits; stop it with scripts/stop-sut.sh.
 set -euo pipefail
 
 SUT_DIR="${SUT_DIR:-../taskflow-under-test}"
 PORT="${PORT:-3000}"
+AUTH_RATE_LIMIT="${AUTH_RATE_LIMIT:-0}"
 mkdir -p reports
 SUT_LOG="${SUT_LOG:-$PWD/reports/taskflow.log}"
 DB_DIR="$(mktemp -d)"
@@ -25,7 +28,7 @@ fi
 
 ROOT="$PWD"
 cd "$SUT_DIR"
-DATABASE_PATH="$DB_DIR/taskflow.db" PORT="$PORT" nohup node src/server.js >"$SUT_LOG" 2>&1 &
+DATABASE_PATH="$DB_DIR/taskflow.db" PORT="$PORT" AUTH_RATE_LIMIT="$AUTH_RATE_LIMIT" nohup node src/server.js >"$SUT_LOG" 2>&1 &
 echo $! >"$ROOT/reports/taskflow.pid"
 cd "$ROOT"
 
