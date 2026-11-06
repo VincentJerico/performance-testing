@@ -94,6 +94,21 @@ runs; [docs/FINDINGS.md](docs/FINDINGS.md) has the data.
 The full plan (scope, workload model, SLOs, entry and exit criteria) is in
 [docs/TEST-PLAN.md](docs/TEST-PLAN.md).
 
+## Results over time
+
+Every nightly run on `main` is recorded automatically:
+
+- **Trend page:** [vincentjerico.github.io/performance-testing](https://vincentjerico.github.io/performance-testing/)
+  charts the gates and key numbers across runs. Every point links to its CI run.
+- **[docs/results/LATEST.md](docs/results/LATEST.md):** the latest run in full. A rolling bot PR
+  (`chore(results): nightly results`) updates it each night; merge it to take a snapshot.
+- **History:** one JSON line per run in `history.jsonl` on the
+  [`results`](https://github.com/VincentJerico/performance-testing/tree/results) branch.
+
+`scripts/extract-run.mjs` reads the numbers straight from each run's k6 output, and a missing
+artifact leaves its field out rather than guessing. The dated files in [docs/results/](docs/results/)
+are one-off write-ups of specific investigations.
+
 ## Run it locally
 
 You need [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) and Node 22.
