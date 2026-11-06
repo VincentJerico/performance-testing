@@ -16,6 +16,9 @@
     "exp:auth": "k6 run experiments/auth-contention.js",
     "exp:list": "k6 run experiments/list-growth.js",
     "selftest": "bash selftest/gate-must-fail.sh",
+    "test": "node --test test/*.test.mjs",
+    "check:auth": "node scripts/check-auth-contention.mjs",
+    "check:soak": "node scripts/check-soak-rss.mjs",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
