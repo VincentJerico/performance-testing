@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 
 // FINDINGS.md's pass condition is "within 2x the baseline". Baselines on CI are under 1.2 ms, where
 // 2x is scheduler noise, so the limit never goes below baseline + 5 ms. The old scryptSync build's
-// lowest reading in 12 nightly runs was 23.8 ms, far above either bound.
+// lowest reading in 13 nightly runs was 23.8 ms, far above either bound.
 export const MAX_RATIO = 2;
 export const FLOOR_MS = 5;
 
