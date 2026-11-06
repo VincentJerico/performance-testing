@@ -89,6 +89,28 @@ CI confirms it on Linux at 10 logins/s (the rate the deep job runs). On the same
 runner image, readers' p95 during logins went from 43.9 ms before the fix to 0.9 ms after, against
 baselines of 2.2 ms and 0.7 ms.
 
+### Gated nightly
+
+The experiment is now a nightly gate at 10, 30 and 60 logins/s
+(`scripts/check-auth-contention.mjs`). It fails when readers' p95 during logins is above 2x the
+baseline **and** above baseline + 5 ms. The second bound is there because CI baselines are about 1
+ms, where 2x is jitter: in the first gated run, 60 logins/s gave 1.22 ms against a 0.46 ms baseline
+(2.6x) on the fixed build.
+
+First gated run, [42224679001](https://github.com/VincentJerico/performance-testing/actions/runs/42224679001)
+(GitHub Actions, 0% failed requests in every job):
+
+| TaskFlow          | Logins/s | Readers p95, baseline | Readers p95, during logins |   Login p95 | Gate |
+| ----------------- | -------: | --------------------: | -------------------------: | ----------: | ---- |
+| `e9012be` (fixed) |       10 |               1.09 ms |                    1.38 ms |    26.83 ms | pass |
+| `e9012be` (fixed) |       30 |               1.22 ms |                    1.52 ms |    46.18 ms | pass |
+| `e9012be` (fixed) |       60 |               0.46 ms |                    1.22 ms |    30.91 ms | pass |
+| `8b0d564` (old)   |       30 |               1.04 ms |                7,629.92 ms | 3,398.37 ms | fail |
+
+The last row is the gate's self-test: the same run starts the old `scryptSync` TaskFlow and passes
+only if the gate fails. On this runner the old build collapsed at 30 logins/s, and k6 dropped 123
+login iterations.
+
 ---
 
 ## PERF-002: The task list has no pagination
@@ -166,6 +188,7 @@ clear of every run above. Its self-test (`npm test`) feeds it a real soak with 1
 added after warm-up and expects a failure. With fewer than 10 samples over 10 minutes after
 warm-up, it exits 2 (nothing checked) rather than passing.
 
-**Watch:** the one run on the fixed TaskFlow (`e9012be`, PERF-001) sat about 40 MB higher than the
-others for the whole run, though just as flat. One run isn't enough to explain it. Once
-`TASKFLOW_REF` points at `e9012be`, the nightly soak will show whether that's consistent.
+**Watch:** both soaks on the fixed TaskFlow (`e9012be`, PERF-001) sat about 40 MB higher than the
+old build for the whole run, though just as flat: 171 to 177 MB in run 40154014010, and 169 to
+173 MB (slope 0.257 MB/min) in the first gated run, 42224679001. Two runs agree, but they don't say
+why. Once `TASKFLOW_REF` points at `e9012be`, every nightly soak will add a data point.
