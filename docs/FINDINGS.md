@@ -5,12 +5,13 @@ Performance findings for [TaskFlow](https://github.com/VincentJerico/taskflow-un
 [results/RESULTS-2026-10-24.md](results/RESULTS-2026-10-24.md), and every finding has a script
 that reproduces it.
 
-| ID       | Finding                                                                             | Severity | Status |
-| -------- | ----------------------------------------------------------------------------------- | -------- | ------ |
-| PERF-001 | Password hashing blocks the event loop, so login traffic stalls every other request | High     | Fixed  |
-| PERF-002 | `GET /api/tasks` has no pagination; the response grows with every task              | Low      | Open   |
-| OBS-001  | Task CRUD is not the bottleneck: over 7,000 req/s without breaking the SLO          | Info     | -      |
-| OBS-002  | Server memory over 30-minute soaks: flattens after warm-up, no leak in 14 runs      | Info     | Closed |
+| ID       | Finding                                                                                     | Severity | Status |
+| -------- | ------------------------------------------------------------------------------------------- | -------- | ------ |
+| PERF-001 | Password hashing blocks the event loop, so login traffic stalls every other request         | High     | Fixed  |
+| PERF-002 | `GET /api/tasks` has no pagination; the response grows with every task                      | Low      | Open   |
+| OBS-001  | Task CRUD is not the bottleneck: over 7,000 req/s without breaking the SLO                  | Info     | -      |
+| OBS-002  | Server memory over 30-minute soaks: flattens after warm-up, no leak in 14 runs              | Info     | Closed |
+| OBS-003  | At 60 logins/s the fixed build is CPU-bound on a CI runner, so slow reads follow the runner | Info     | Open   |
 
 ---
 
@@ -91,21 +92,21 @@ baselines of 2.2 ms and 0.7 ms.
 
 ### Gated nightly
 
-The experiment is now a nightly gate at 10, 30 and 60 logins/s
-(`scripts/check-auth-contention.mjs`). It fails when readers' p95 during logins is above 2x the
-baseline **and** above baseline + 5 ms. The second bound is there because CI baselines are about 1
-ms, where 2x is jitter: in the first gated run, 60 logins/s gave 1.22 ms against a 0.46 ms baseline
-(2.6x) on the fixed build.
+`scripts/check-auth-contention.mjs` now gates the experiment nightly at 10 and 30 logins/s. It also
+runs at 60 logins/s, measured only (see OBS-003). It fails when readers' p95 during logins is above
+2x the baseline **and** above baseline + 5 ms. The second bound is there because CI baselines are
+about 1 ms, where 2x is jitter: in the first gated run, 60 logins/s gave 1.22 ms against a 0.46 ms
+baseline (2.6x) on the fixed build.
 
 First gated run, [42224679001](https://github.com/VincentJerico/performance-testing/actions/runs/42224679001)
 (GitHub Actions, 0% failed requests in every job):
 
-| TaskFlow          | Logins/s | Readers p95, baseline | Readers p95, during logins |   Login p95 | Gate |
-| ----------------- | -------: | --------------------: | -------------------------: | ----------: | ---- |
-| `e9012be` (fixed) |       10 |               1.09 ms |                    1.38 ms |    26.83 ms | pass |
-| `e9012be` (fixed) |       30 |               1.22 ms |                    1.52 ms |    46.18 ms | pass |
-| `e9012be` (fixed) |       60 |               0.46 ms |                    1.22 ms |    30.91 ms | pass |
-| `8b0d564` (old)   |       30 |               1.04 ms |                7,629.92 ms | 3,398.37 ms | fail |
+| TaskFlow          | Logins/s | Readers p95, baseline | Readers p95, during logins |   Login p95 | Gate            |
+| ----------------- | -------: | --------------------: | -------------------------: | ----------: | --------------- |
+| `e9012be` (fixed) |       10 |               1.09 ms |                    1.38 ms |    26.83 ms | pass            |
+| `e9012be` (fixed) |       30 |               1.22 ms |                    1.52 ms |    46.18 ms | pass            |
+| `e9012be` (fixed) |       60 |               0.46 ms |                    1.22 ms |    30.91 ms | pass (measured) |
+| `8b0d564` (old)   |       30 |               1.04 ms |                7,629.92 ms | 3,398.37 ms | fail            |
 
 The last row is the gate's self-test: the same run starts the old `scryptSync` TaskFlow and passes
 only if the gate fails. On this runner the old build collapsed at 30 logins/s, and k6 dropped 123
@@ -192,3 +193,32 @@ warm-up, it exits 2 (nothing checked) rather than passing.
 old build for the whole run, though just as flat: 171 to 177 MB in run 40154014010, and 169 to
 173 MB (slope 0.257 MB/min) in the first gated run, 42224679001. Two runs agree, but they don't say
 why. Once `TASKFLOW_REF` points at `e9012be`, every nightly soak will add a data point.
+
+---
+
+## OBS-003: At 60 logins/s, the fixed build runs out of CPU on a CI runner
+
+**Status:** Open (watch). **Measured nightly**, not gated.
+
+With async `crypto.scrypt`, hashing no longer blocks the event loop (PERF-001 is fixed), but it
+still costs CPU. At 60 logins/s, two deep runs of the same code on GitHub Actions gave very
+different results for readers:
+
+| Run                                                                                          | Login median (about one hash) | Readers p95, baseline | Readers p95, during logins | Readers median, during logins |
+| -------------------------------------------------------------------------------------------- | ----------------------------: | --------------------: | -------------------------: | ----------------------------: |
+| [42224679001](https://github.com/VincentJerico/performance-testing/actions/runs/42224679001) |                       25.6 ms |               0.46 ms |                    1.22 ms |                       0.85 ms |
+| [42229552873](https://github.com/VincentJerico/performance-testing/actions/runs/42229552873) |                       45.1 ms |               0.73 ms |                   47.82 ms |                       1.00 ms |
+
+Both used TaskFlow `e9012be`, with 0% failed requests. In the second run everything on the runner
+was slower, and a single hash took almost twice as long. At 60 logins/s and about 45 ms per hash,
+hashing needs roughly 2.7 CPU cores, on a 4-vCPU runner that is also running k6. The median read
+stayed near 1 ms, so the event loop isn't blocked: the machine is short of CPU, and the slowest
+reads wait for it.
+
+At 10 and 30 logins/s, readers stayed between 1.28 and 1.52 ms p95 in both runs, even though hash
+time varied from 24.6 to 48.2 ms between runners. That's why the gate covers those rates.
+
+**What it means:** one TaskFlow process tops out somewhere around 60 logins/s on 4 vCPUs. The auth
+rate limit (20 requests per minute per IP) keeps any single client far below that; many clients
+signing in at once could still reach it. The 60/s result is recorded every night on the trend page,
+so a trend will show even though it doesn't fail the run.

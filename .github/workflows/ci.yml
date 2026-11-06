@@ -74,7 +74,7 @@ jobs:
           retention-days: 14
 
   deep:
-    name: Deep run (${{ matrix.test }}${{ matrix.rate && format(' {0}/s', matrix.rate) || '' }})
+    name: Deep run (${{ matrix.test }}${{ matrix.rate && format(' {0}/s', matrix.rate) || '' }}${{ matrix.measured && ', measured' || '' }})
     if: ${{ github.event_name == 'schedule' || inputs.deep }}
     needs: gate
     runs-on: ubuntu-latest
@@ -82,7 +82,8 @@ jobs:
       fail-fast: false
       matrix:
         test: [stress, spike, breakpoint, soak, list-growth]
-        # PERF-001 is gated at each login rate from FINDINGS.md.
+        # PERF-001 is gated at 10 and 30 logins/s. At 60/s the result depends on how much spare CPU
+        # the runner has (OBS-003), so it's measured and recorded but doesn't fail the run.
         include:
           - test: auth-contention
             rate: 10
@@ -90,6 +91,7 @@ jobs:
             rate: 30
           - test: auth-contention
             rate: 60
+            measured: true
     steps:
       - uses: actions/checkout@v7
       - uses: actions/checkout@v7
@@ -128,7 +130,16 @@ jobs:
       - name: PERF-001 gate (readers p95 during logins within 2x baseline)
         if: ${{ matrix.test == 'auth-contention' }}
         shell: bash
-        run: node scripts/check-auth-contention.mjs reports/auth-contention.json | tee -a "$GITHUB_STEP_SUMMARY"
+        run: |
+          set +e
+          node scripts/check-auth-contention.mjs reports/auth-contention.json | tee -a "$GITHUB_STEP_SUMMARY"
+          code=${PIPESTATUS[0]}
+          # Measured rates report the verdict but only fail when there was nothing to check (exit 2).
+          if [ "${{ matrix.measured }}" = true ] && [ "$code" -eq 1 ]; then
+            echo "Measured at this rate, not gated (OBS-003)." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$code"
       - name: Soak memory gate (OBS-002)
         if: ${{ matrix.test == 'soak' }}
         shell: bash
