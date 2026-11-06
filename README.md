@@ -43,7 +43,11 @@ performance-testing/
 │   └── list-growth.js       # how does the list endpoint scale with data? (PERF-002)
 ├── selftest/
 │   └── gate-must-fail.sh    # proves the SLO gate can fail
-├── scripts/             # start/stop TaskFlow, run with reports, CI job summary, memory sampling
+├── scripts/
+│   ├── check-auth-contention.mjs  # PERF-001 gate: logins must not slow other reads
+│   ├── check-soak-rss.mjs         # OBS-002 gate: memory must flatten during the soak
+│   └── ...              # start/stop TaskFlow, run with reports, CI job summary, memory sampling
+├── test/                # self-tests for the gate checkers, on real CI output
 └── docs/                # test plan, findings, results
 ```
 
@@ -66,6 +70,16 @@ echoed, the update saved the status). A fast wrong answer still fails.
 example, `auth-contention.js` holds read traffic steady, adds logins for 20 seconds, and compares
 read latency before, during and after.
 
+**Fixed findings stay fixed.** Once a finding is fixed, its experiment becomes a nightly gate:
+
+| Gate                                                                 | Fails when                                                                  | Self-test                                                                                            |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| PERF-001, at 10 and 30 logins/s (60/s is measured only, see OBS-003) | readers' p95 during logins is above 2x baseline (and above baseline + 5 ms) | a nightly job runs the experiment against the old `scryptSync` TaskFlow and expects the gate to fail |
+| Soak memory (OBS-002)                                                | RSS in the second half of the soak climbs faster than 0.5 MB/min            | `npm test` feeds it a real soak with a planted 1 MB/min leak                                         |
+
+Both checkers exit 2, not 0, when their input has nothing to check. The limits come from 14 nightly
+runs; [docs/FINDINGS.md](docs/FINDINGS.md) has the data.
+
 ## Test types
 
 | Test       | Question                              | Load                                    | Runs       |
@@ -74,7 +88,7 @@ read latency before, during and after.
 | Load       | Does the expected load meet the SLOs? | 20 users, 60 s steady                   | every push |
 | Stress     | How does it degrade past normal?      | 50, 100, then 150 users                 | nightly    |
 | Spike      | Does it survive a burst, and recover? | 5 to 200 users in 5 s                   | nightly    |
-| Soak       | Does anything get worse over time?    | 15 users, 30 min, server memory sampled | nightly    |
+| Soak       | Does anything get worse over time?    | 15 users, 30 min, server memory gated   | nightly    |
 | Breakpoint | What's the maximum throughput?        | arrival rate ramps until the SLO breaks | nightly    |
 
 The full plan (scope, workload model, SLOs, entry and exit criteria) is in
@@ -94,6 +108,10 @@ npm run exp:auth         # PERF-001 experiment (try: k6 run -e LOGIN_RATE=60 exp
 npm run exp:list         # PERF-002 experiment
 npm run selftest         # proves the gate can fail
 npm run sut:stop
+
+npm test                 # self-tests for the PERF-001 and soak memory gates (no TaskFlow needed)
+npm run check:auth       # gate the last auth-contention run (reports/auth-contention.json)
+npm run check:soak       # gate the last soak (reports/soak-rss.csv)
 ```
 
 Each run writes `reports/<test>.html` (k6's dashboard as a standalone page) and
