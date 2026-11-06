@@ -18,13 +18,16 @@ export function readHistory(file) {
  * returns undefined when that run didn't produce the number; `gate` (optional) returns
  * 'pass' / 'fail' for runs a gate judged.
  */
+/** PERF-001 is gated at these rates. 60/s is measured only (OBS-003): its verdict isn't a gate. */
+export const GATED_AUTH_RATES = ['10', '30'];
+
 export const SERIES = [
   ...['10', '30', '60'].map((rate) => ({
     id: `auth-${rate}`,
-    title: `PERF-001: readers p95 during logins, ${rate} logins/s`,
+    title: `PERF-001: readers p95 during logins, ${rate} logins/s${GATED_AUTH_RATES.includes(rate) ? '' : ' (measured, not gated)'}`,
     unit: 'ms',
     value: (r) => r.authContention?.[rate]?.duringP95Ms,
-    gate: (r) => r.authContention?.[rate]?.gate,
+    gate: GATED_AUTH_RATES.includes(rate) ? (r) => r.authContention?.[rate]?.gate : undefined,
     note: (r) => {
       const a = r.authContention?.[rate];
       return a ? `baseline ${a.baselineP95Ms} ms, limit ${a.limitMs} ms` : undefined;

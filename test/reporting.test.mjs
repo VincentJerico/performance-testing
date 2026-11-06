@@ -78,3 +78,23 @@ test('the trend page has one chart per series with data and no broken values', (
   assert.doesNotMatch(html, /undefined|NaN/);
   assert.doesNotMatch(html, /<script src=|<link rel="stylesheet"/); // self-contained
 });
+
+test('60 logins/s is measured, never drawn as a gate failure', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'perf-run-'));
+  cpSync(RUN, dir, { recursive: true });
+  // The fixture's auth run is the old build, so its verdict is "fail" at any rate.
+  renameSync(join(dir, 'auth-contention-reports'), join(dir, 'auth-contention-60-reports'));
+  const record = extractRun(dir, META);
+  assert.equal(record.authContention['60'].gate, 'fail');
+  const html = buildTrends([record]);
+  const card = html.slice(
+    html.indexOf('id="auth-60"'),
+    html.indexOf('</section>', html.indexOf('id="auth-60"')),
+  );
+  assert.match(card, /measured, not gated/);
+  assert.doesNotMatch(card, /class="mark fail"|gate failed|FAIL/);
+  assert.match(
+    renderResults([record]),
+    /PERF-001 at 60 logins\/s \(measured\) .* not gated \(would fail\)/,
+  );
+});

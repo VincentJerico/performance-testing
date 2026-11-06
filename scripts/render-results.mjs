@@ -3,7 +3,7 @@
 //
 //   node scripts/render-results.mjs history.jsonl > docs/results/LATEST.md
 import { pathToFileURL } from 'node:url';
-import { byDate, readHistory, SERIES, short, day } from './history.mjs';
+import { byDate, GATED_AUTH_RATES, readHistory, SERIES, short, day } from './history.mjs';
 
 const RECENT = 10;
 const OLD_TASKFLOW = '8b0d564'; // last TaskFlow commit with scryptSync (PERF-001)
@@ -43,10 +43,10 @@ export function renderResults(records) {
   const gateRows = Object.entries(r.authContention ?? {})
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([rate, a]) => [
-      `PERF-001 at ${rate} logins/s`,
+      `PERF-001 at ${rate} logins/s${GATED_AUTH_RATES.includes(rate) ? '' : ' (measured)'}`,
       `readers p95 ${fmt(a.duringP95Ms, 'ms')} during logins (baseline ${fmt(a.baselineP95Ms, 'ms')})`,
       `${fmt(a.limitMs, 'ms')}`,
-      verdict(a.gate),
+      GATED_AUTH_RATES.includes(rate) ? verdict(a.gate) : `not gated (would ${a.gate})`,
     ]);
   if (r.soak) {
     gateRows.push([
